@@ -46,6 +46,9 @@ def run():
 
     plt.figure(2)
     plt.imshow(255 - sbp_simulate.seafloor*255, cmap='gray')
+    plt.title("TWTT vs distance")
+    plt.xlabel("Distance (km)")
+    plt.ylabel("TWTT")
     plt.show()
 
 
