@@ -8,6 +8,7 @@ class SBP_Simulate():
         self.rho = rho
         self.c = c
         self.profile = np.zeros((256, 1))
+        self.seafloor = np.zeros((256, 256))
         self.rho_profile = np.zeros((256, 1))
         self.c_profile = np.zeros((256, 1))
         self.rho_profile[:100] = rho[0]
@@ -26,7 +27,11 @@ class SBP_Simulate():
         print(T21)
         self.profile[101] = R12
         self.profile[161] = T21
-        
+
+    def floor(self):
+        for i in range(256):
+            self.seafloor[:,i] = self.profile[:,0]
+    
 
 def run():
     layers = 3
@@ -34,8 +39,15 @@ def run():
     c = [1500, 1600, 1650]
     sbp_simulate = SBP_Simulate(3, rho, c)
     sbp_simulate.simulate()
+    sbp_simulate.floor()
+
+    plt.figure(1)
     plt.plot(sbp_simulate.profile)
+
+    plt.figure(2)
+    plt.imshow(255 - sbp_simulate.seafloor*255, cmap='gray')
     plt.show()
+
 
 if __name__ == '__main__':
     run()
