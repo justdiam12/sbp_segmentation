@@ -3,17 +3,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class SBP_Simulate():
-    def __init__(self, layers, rho, c, m_to_p, thresh):
+    def __init__(self, layers, rho, c, m_per_p, thresh):
         self.layers = layers
         self.rho = rho
         self.c = c
-        self.m_to_p = m_to_p
+        self.m_per_p = m_per_p
         self.thresh = thresh
         self.profile = np.zeros((256,1))
         self.rho_profile = np.zeros((256, 1))
         self.c_profile = np.zeros((256, 1))
         self.twtt = np.array([], dtype=np.float32)
-
+        self.amp = np.array([], dtype=np.float32)
         for i in range(len(self.layers)):
             if i == 0:
                 self.rho_profile[0:self.layers[i]] = self.rho[i]
@@ -42,16 +42,16 @@ class SBP_Simulate():
             else:
                 print("Descending pulse")
                 while self.impedance[index] == self.impedance[index+1]:
-                    time += self.m_to_p / self.c_profile[index]
+                    time += self.m_per_p / self.c_profile[index]
                     index += 1
                     if index+1 == len(self.profile):
                         return
-                R = (self.impedance[index+1] - self.impedance[index]) / (self.impedance[index+1] + self.impedance[index])
-                T = (2*self.impedance[index+1]) / (self.impedance[index+1] + self.impedance[index])
+                R = ((self.impedance[index+1] - self.impedance[index]) / (self.impedance[index+1] + self.impedance[index])) * coeff
+                T = ((2*self.impedance[index+1]) / (self.impedance[index+1] + self.impedance[index])) * coeff
                 if R >= self.thresh:
-                    self.pulse(index, 1, time, coeff*R)
+                    self.pulse(index, 1, time, R)
                 if T >= self.thresh:
-                    self.pulse(index+1, -1, time, coeff*T)
+                    self.pulse(index+1, -1, time, T)
 
         elif up_down == 1:
             if index-1 == -1:
@@ -59,28 +59,31 @@ class SBP_Simulate():
             else:
                 print("Ascending pulse")
                 while self.impedance[index] == self.impedance[index-1]:
-                    time += self.m_to_p / self.c_profile[index]
+                    time += self.m_per_p / self.c_profile[index]
                     index -= 1
                     if index-1 == -1:
                         self.twtt = np.append(self.twtt, time)
+                        self.amp = np.append(self.amp, coeff)
                         return
-                R = (self.impedance[index] - self.impedance[index]) / (self.impedance[index-1] + self.impedance[index-1])
-                T = (2*self.impedance[index]) / (self.impedance[index] + self.impedance[index-1])
+                R = ((self.impedance[index-1] - self.impedance[index]) / (self.impedance[index-1] + self.impedance[index])) * coeff
+                T = ((2*self.impedance[index-1]) / (self.impedance[index-1] + self.impedance[index])) * coeff
                 if R >= self.thresh:
-                    self.pulse(index, -1, time, coeff*R)
+                    self.pulse(index, -1, time, R)
                 if T >= self.thresh:
-                    self.pulse(index+1, 1, time, coeff*T)
-            
+                    self.pulse(index+1, 1, time, T)
+
 
 def run():
     layers = [10, 50, 60]
     rho = [1026, 1906, 1922, 1955]
     c = [1500, 1600, 1650, 1660]
-    thresh = 0.001
-    m_to_p = 1 # Meters/Pixel
-    sbp_simulate = SBP_Simulate(layers, rho, c, m_to_p, thresh)
-    # sbp_simulate.simulate()
-    print(len(sbp_simulate.c_profile))
+    thresh = 0.0001
+    m_per_p = 1 # Meters/Pixel
+    sbp_simulate = SBP_Simulate(layers, rho, c, m_per_p, thresh)
+    sbp_simulate.simulate() 
+
+    plt.plot(sbp_simulate.twtt, sbp_simulate.amp, "-o")
+    plt.show()
 
 
 if __name__ == '__main__':
