@@ -26,9 +26,9 @@ class SBP_Simulate():
         self.impedance = self.rho_profile * self.c_profile
         
     def simulate(self):
-        start_index = 0
+        index = 0
         up_down = -1 
-        self.pulse(start_index, up_down)
+        self.pulse(index, up_down)
         # R12 = (self.rho[1]*self.c[1] - self.rho[0]*self.c[0]) / (self.rho[1]*self.c[1] + self.rho[0]*self.c[0])
         # T12 = (2*self.rho[1]*self.c[1]) / (self.rho[1]*self.c[1] + self.rho[0]*self.c[0])
         # R23 = T12 * ((self.rho[2]*self.c[2] - self.rho[1]*self.c[1]) / (self.rho[2]*self.c[2] + self.rho[1]*self.c[1]))
