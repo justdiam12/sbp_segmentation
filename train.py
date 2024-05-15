@@ -19,15 +19,15 @@ LEARNING_RATE = 1e-4
 DEVICE = 'cpu'
 BATCH_SIZE = 16
 NUM_EPOCHS = 50
-NUM_WORKERS = 2
+NUM_WORKERS = 6
 IMAGE_HEIGHT = 256
 IMAGE_WIDTH = 256
 PIN_MEMORY = True
 LOAD_MODEL = False
-TRAIN_IMG_DIR = '/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Train'
-TRAIN_MASK_DIR = '/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Train'
-VAL_IMG_DIR = '/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Validation'
-VAL_MASK_DIR = '/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Validation'
+TRAIN_IMG_DIR = 'E:\Stratigraphy\sbp_segmentation-1/SBP_Dataset_v6/Train'
+TRAIN_MASK_DIR = 'E:\Stratigraphy\sbp_segmentation-1/SBP_Dataset_v6/Train'
+VAL_IMG_DIR = 'E:\Stratigraphy\sbp_segmentation-1/SBP_Dataset_v6/Validation'
+VAL_MASK_DIR = 'E:\Stratigraphy\sbp_segmentation-1/SBP_Dataset_v6/Validation'
 
 def train_fn(loader, model, optimizer, loss_fn, scaler):
     loop = tqdm(loader)
@@ -83,7 +83,7 @@ def main():
         ]
     )
 
-    model = UNet(in_channels=1, out_channels=6).float()
+    model = UNet(in_channels=2, out_channels=6).float()
     loss_fn = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
@@ -99,7 +99,7 @@ def main():
 
     scaler = torch.cuda.amp.GradScaler()
 
-    epoch_saves = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    epoch_saves = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
     for epoch in range(NUM_EPOCHS):
         print(f"Epoch {epoch+1} of {NUM_EPOCHS}")

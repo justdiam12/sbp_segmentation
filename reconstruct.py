@@ -58,11 +58,11 @@ def reconstruct_image(input_folder, output_path):
 #     reconstructed_image.save(output_path)
 
 if __name__ == "__main__":
-    epochs = 50
+    epochs = 1
     # input_images_folder = "/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Output_50_Epochs/"
     # output_reconstructed_image_path = "/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/reconstructed_" + str(epochs) + "_Epoch" + ".png"
     # input_images_folder = "/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Label/"
     # output_reconstructed_image_path = "/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/reconstructed_label.png"
-    input_images_folder = "/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Test_Output_50_Epochs/"
-    output_reconstructed_image_path = "/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/test_label.png"
+    input_images_folder = "E:\Stratigraphy\sbp_segmentation-1/SBP_Dataset_v3/Output_1_Epochs/"
+    output_reconstructed_image_path = "E:\Stratigraphy\sbp_segmentation-1/SBP_Dataset_v3/test_label_1_epoch.png"
     reconstruct_image(input_images_folder, output_reconstructed_image_path)

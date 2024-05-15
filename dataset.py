@@ -27,7 +27,8 @@ class SBPDataset(Dataset):
         mask_path = os.path.join(self.mask_dir, self.images[index])
         mat = io.loadmat(image_path)
         image = np.array(mat['AMP'], dtype=np.float32)
-        image = np.expand_dims(image, axis=0)
+        image = np.transpose(image, (2, 0, 1))
+        # image = np.expand_dims(image, axis=0)
         # Switch dimension 3 with dim 1 for 
         mask = np.array(mat['label'], dtype=np.float32)
         # print(mask.shape)
