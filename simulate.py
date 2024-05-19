@@ -3,18 +3,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class SBP_Simulate():
-    def __init__(self, size, layers, rho, c, m_per_p, thresh):
+    def __init__(self, size, layers, rho, c, m_per_p, thresh, frequency):
+        self.size = size
         self.layers = layers
         self.rho = rho
         self.c = c
         self.m_per_p = m_per_p
         self.thresh = thresh
-        self.profile = np.ones((size,1), dtype=np.float32)*0.00001
-        self.floor = np.ones((size, size), dtype=np.float32)*0.00001
-        self.rho_profile = np.zeros((size, 1))
-        self.c_profile = np.zeros((size, 1))
-        self.twtt = np.array([], dtype=np.float32)
-        self.amp = np.array([], dtype=np.float32)
+        self.frequency = frequency
+        self.profile = np.ones((self.size,1), dtype=np.float32)*0.00001
+        self.floor = np.ones((self.size, self.size), dtype=np.float32)*0.00001
+        self.rho_profile = np.zeros((self.size, 1))
+        self.c_profile = np.zeros((self.size, 1))
+        self.twtt = np.arange(0, 1, 1/self.frequency, dtype=np.float32)
+        self.amp = np.zeros_like(self.twtt)*0.000001
         for i in range(len(self.layers)):
             if i == 0:
                 self.rho_profile[0:self.layers[i]] = self.rho[i]
@@ -49,9 +51,9 @@ class SBP_Simulate():
                         return
                 R = ((self.impedance[index+1] - self.impedance[index]) / (self.impedance[index+1] + self.impedance[index])) * coeff
                 T = ((2*self.impedance[index+1]) / (self.impedance[index+1] + self.impedance[index])) * coeff
-                if R >= self.thresh:
+                if np.abs(R) >= self.thresh:
                     self.pulse(index, 1, time + self.m_per_p / self.c_profile[index], R, np.append(rt,R))
-                if T >= self.thresh:
+                if np.abs(T) >= self.thresh:
                     self.pulse(index+1, -1, time + self.m_per_p / self.c_profile[index], T, np.append(rt,T))
 
         elif up_down == 1: # Ascending Pulse
@@ -63,39 +65,56 @@ class SBP_Simulate():
                     index -= 1
                     if index-1 == -1:
                         time += self.m_per_p / self.c_profile[index]
-                        self.twtt = np.append(self.twtt, time)
-                        self.amp = np.append(self.amp, coeff)
-                        print(rt)
+                        print(np.where(np.isclose(self.twtt, time, atol=1/self.frequency))[0])
+                        self.amp[np.where(np.isclose(self.twtt, time, atol=1/self.frequency))[0]] = coeff
+                        # print(rt)
                         return
                 R = ((self.impedance[index-1] - self.impedance[index]) / (self.impedance[index-1] + self.impedance[index])) * coeff
                 T = ((2*self.impedance[index-1]) / (self.impedance[index-1] + self.impedance[index])) * coeff
-                if T >= self.thresh:
+                if np.abs(T) >= self.thresh:
                     self.pulse(index-1, 1, time + self.m_per_p / self.c_profile[index], T, np.append(rt,T))
-                if R >= self.thresh:
+                if np.abs(R) >= self.thresh:
                     self.pulse(index, -1, time + self.m_per_p / self.c_profile[index], R, np.append(rt,R))
 
-    # def seafloor(self):
-    #     for i in range(len(self.twtt)):
-    #         hit = round((1500*self.twtt[i])/2)
-    #         self.floor
+    def conv(self):
+        exp_decay = np.exp(-np.arange(0, 0.05, 1 / self.frequency, dtype=np.float32) * 200)
+        max_amp_before = np.max(np.abs(self.amp)) 
+        convolved_amp = np.convolve(self.amp, exp_decay, 'same') 
+        max_amp_after = np.max(np.abs(convolved_amp))
+        if max_amp_after != 0:
+            self.amp = convolved_amp * (max_amp_before / max_amp_after)
+        else:
+            self.amp = convolved_amp
 
-    #     # for i in range(256):
-    #     #     self.floor[:,i] = self.profile
+    def seafloor(self):
+        for i in range(self.size):
+            segment_size = len(self.amp) // self.size
+            self.floor[:,i] = np.mean(self.amp[:segment_size*self.size].reshape(-1, segment_size), axis=1)
 
 def run():
-    size = 1000
+    size = 2500
     # layers = [10, 20, 30]
-    layers = [50, 115, 130]
-    rho = [1026, 1600, 1800, 2700]
-    c = [1500, 1450, 1700, 5000]
-    thresh = 0.00
+    layers = [50, 115, 200]
+    rho = [1026, 1600, 1800, 2000]
+    c = [1500, 1450, 1700, 1900]
+    thresh = 0.001
     m_per_p = 1 # Meters/Pixel
-    sbp_simulate = SBP_Simulate(size, layers, rho, c, m_per_p, thresh)
+    frequency = 16.67e3
+    sbp_simulate = SBP_Simulate(size, layers, rho, c, m_per_p, thresh, frequency)
     sbp_simulate.simulate() 
-    print(sbp_simulate.twtt)
-    # sbp_simulate.seafloor()
+    sbp_simulate.conv() 
+    sbp_simulate.seafloor()
 
-    plt.plot(sbp_simulate.twtt, 20*np.log(sbp_simulate.amp), "o")
+    plt.figure(1)
+    plt.plot(sbp_simulate.twtt, np.abs(sbp_simulate.amp), "-r")
+
+    plt.figure(2)
+    plt.imshow(np.abs(sbp_simulate.floor), extent=[0, sbp_simulate.floor.shape[1], sbp_simulate.twtt[-1], sbp_simulate.twtt[0]], cmap='gray', aspect='auto')
+    plt.colorbar(label="Amplitude")  
+    plt.title('Seafloor Simulation')
+    plt.xlabel('Distance (m)')
+    plt.ylabel('TWTT')
+    plt.yticks(np.arange(sbp_simulate.twtt[0], sbp_simulate.twtt[-1], 0.1))
     plt.show()
 
 
