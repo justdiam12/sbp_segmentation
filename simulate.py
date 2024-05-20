@@ -1,5 +1,6 @@
 # This is the code to simulate the SBP data
 import numpy as np
+import random
 import matplotlib.pyplot as plt
 
 class SBP_Simulate():
@@ -11,11 +12,11 @@ class SBP_Simulate():
         self.m_per_p = m_per_p
         self.thresh = thresh
         self.frequency = frequency
-        self.floor = np.ones((self.size, self.size), dtype=np.float32)*0.000001
+        self.floor = np.ones((self.size, self.size), dtype=np.float32)*0.00000001
         self.rho_profile = np.zeros((self.size, self.size))
         self.c_profile = np.zeros((self.size, self.size))
         self.twtt = np.arange(0, 1, 1/self.frequency, dtype=np.float32)
-        self.amp = np.ones((len(self.twtt), size), dtype=np.float32)*0.000001
+        self.amp = np.ones((len(self.twtt), size), dtype=np.float32)*0.0000001
         for j in range(self.layers.shape[1]):
             for i in range(self.layers.shape[0]):
                 layer_1 = int(self.layers[i,j])
@@ -70,7 +71,7 @@ class SBP_Simulate():
                     if index-1 == -1:
                         time += self.m_per_p / self.c_profile[index, dim]
                         self.amp[np.where(np.isclose(self.twtt, time, atol=1/self.frequency))[0], dim] = coeff
-                        # print(rt)
+                        print(rt)
                         return
                 R = ((self.impedance[index-1, dim] - self.impedance[index, dim]) / (self.impedance[index-1, dim] + self.impedance[index, dim])) * coeff
                 T = ((2*self.impedance[index-1, dim]) / (self.impedance[index-1, dim] + self.impedance[index, dim])) * coeff
@@ -81,7 +82,7 @@ class SBP_Simulate():
 
     def conv(self):
         for i in range(self.size):
-            exp_decay = np.exp(-np.arange(0, 0.05, 1 / self.frequency, dtype=np.float32) * 200)
+            exp_decay = np.exp(-np.arange(0, 0.05, 1 / self.frequency, dtype=np.float32) * 50)
             max_amp_before = np.max(np.abs(self.amp[:,i])) 
             convolved_amp = np.convolve(self.amp[:,i], exp_decay, 'same') 
             max_amp_after = np.max(np.abs(convolved_amp))
@@ -93,17 +94,26 @@ class SBP_Simulate():
 
 def random_contour(size, layers):
     layer_map = np.zeros((len(layers), size))
+
+    for i in range(layer_map.shape[0]):
+        for j in range(layer_map.shape[1]):
+            if j == 0:
+                layer_map[i,j] = layers[i]
+            else:
+                layer_map[i,j] = random.randint(layers[i-1]-2, layers[i-1]+2)
+
     return layer_map
+
+def generate_mask():
+    return
 
 def run():
     size = 2500
-    layers = [50, 115, 200]
-    # for i in range(size):
-    #     layer_map[:,i] = layers
+    layers = [50, 150, 250]
     layer_map = random_contour(size, layers)
     rho = [1026, 1600, 1800, 2000]
     c = [1500, 1450, 1700, 1900]
-    thresh = 0.001
+    thresh = 0.00001
     m_per_p = 1 # Meters/Pixel
     frequency = 16.67e3
     sbp_simulate = SBP_Simulate(size, layer_map, rho, c, m_per_p, thresh, frequency)
@@ -114,7 +124,7 @@ def run():
     plt.plot(sbp_simulate.twtt, np.abs(sbp_simulate.amp[:,0]), "-r")
 
     plt.figure(2)
-    plt.imshow(np.abs(sbp_simulate.amp), extent=[0, sbp_simulate.floor.shape[1], sbp_simulate.twtt[-1], sbp_simulate.twtt[0]], cmap='gray', aspect='auto')
+    plt.imshow(20*np.log(np.abs(sbp_simulate.amp)), extent=[0, sbp_simulate.floor.shape[1], sbp_simulate.twtt[-1], sbp_simulate.twtt[0]], cmap='gray', aspect ='auto')
     plt.colorbar(label="Amplitude")  
     plt.title('Seafloor Simulation')
     plt.xlabel('Distance (m)')
