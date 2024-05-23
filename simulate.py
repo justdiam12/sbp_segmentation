@@ -2,6 +2,8 @@
 import numpy as np
 import random
 import matplotlib.pyplot as plt
+from scipy import io
+from scipy.ndimage import uniform_filter
 
 class SBP_Simulate():
     def __init__(self, size, layers, rho, c, m_per_p, thresh, frequency):
@@ -39,12 +41,13 @@ class SBP_Simulate():
         index = 0
         up_down = -1 
         time = 0
-        coeff = 1
+        coeff = 1000
         rt = []
+        _range = 0
         for i in range(self.size):
-            self.pulse(index, i, up_down, time, coeff, rt)
+            self.pulse(index, _range, i, up_down, time, coeff, rt)
 
-    def pulse(self, index, dim, up_down, time, coeff, rt):
+    def pulse(self, index, _range, dim, up_down, time, coeff, rt):
         if up_down == -1: # Descending Pulse
             if index+1 == self.size:
                 return
@@ -52,14 +55,15 @@ class SBP_Simulate():
                 while self.impedance[index, dim] == self.impedance[index+1, dim]:
                     time += self.m_per_p / self.c_profile[index, dim]
                     index += 1
+                    _range += 1
                     if index+1 == self.size:
                         return
                 R = ((self.impedance[index+1, dim] - self.impedance[index, dim]) / (self.impedance[index+1, dim] + self.impedance[index, dim])) * coeff
                 T = ((2*self.impedance[index+1, dim]) / (self.impedance[index+1, dim] + self.impedance[index, dim])) * coeff
                 if np.abs(R) >= self.thresh:
-                    self.pulse(index, dim, 1, time + self.m_per_p / self.c_profile[index, dim], R, np.append(rt,R))
+                    self.pulse(index, _range + 1, dim, 1, time + self.m_per_p / self.c_profile[index, dim], R, np.append(rt,R))
                 if np.abs(T) >= self.thresh:
-                    self.pulse(index+1, dim, -1, time + self.m_per_p / self.c_profile[index, dim], T, np.append(rt,T))
+                    self.pulse(index+1, _range + 1, dim, -1, time + self.m_per_p / self.c_profile[index, dim], T, np.append(rt,T))
 
         elif up_down == 1: # Ascending Pulse
             if index-1 == -1:
@@ -68,29 +72,36 @@ class SBP_Simulate():
                 while self.impedance[index, dim] == self.impedance[index-1, dim]:
                     time += self.m_per_p / self.c_profile[index, dim]
                     index -= 1
+                    _range += 1
                     if index-1 == -1:
                         time += self.m_per_p / self.c_profile[index, dim]
-                        self.amp[np.where(np.isclose(self.twtt, time, atol=1/self.frequency))[0], dim] = coeff
-                        print(rt)
+                        _range += 1
+                        self.amp[np.where(np.isclose(self.twtt, time, atol=1/self.frequency))[0], dim] = coeff/_range
+                        # print(20*np.log(rt))
+                        # print(time)
                         return
                 R = ((self.impedance[index-1, dim] - self.impedance[index, dim]) / (self.impedance[index-1, dim] + self.impedance[index, dim])) * coeff
                 T = ((2*self.impedance[index-1, dim]) / (self.impedance[index-1, dim] + self.impedance[index, dim])) * coeff
                 if np.abs(T) >= self.thresh:
-                    self.pulse(index-1, dim, 1, time + self.m_per_p / self.c_profile[index, dim], T, np.append(rt,T))
+                    self.pulse(index-1, _range + 1, dim, 1, time + self.m_per_p / self.c_profile[index, dim], T, np.append(rt,T))
                 if np.abs(R) >= self.thresh:
-                    self.pulse(index, dim, -1, time + self.m_per_p / self.c_profile[index, dim], R, np.append(rt,R))
+                    self.pulse(index, _range + 1, dim, -1, time + self.m_per_p / self.c_profile[index, dim], R, np.append(rt,R))
 
     def conv(self):
         for i in range(self.size):
-            exp_decay = np.exp(-np.arange(0, 0.05, 1 / self.frequency, dtype=np.float32) * 50)
+            exp_decay = np.exp(-np.arange(0, 0.05, 1 / self.frequency, dtype=np.float32) * 100)
             max_amp_before = np.max(np.abs(self.amp[:,i])) 
-            convolved_amp = np.convolve(self.amp[:,i], exp_decay, 'same') 
+            convolved_amp = uniform_filter(np.convolve(self.amp[:,i], exp_decay, 'same'), size=5, mode='reflect')
             max_amp_after = np.max(np.abs(convolved_amp))
             if max_amp_after != 0:
                 self.amp[:,i] = convolved_amp * (max_amp_before / max_amp_after)
             else:
                 self.amp[:,i] = convolved_amp
-
+            # Add Gaussian noise
+            noise_mean = 0  # Mean of the Gaussian noise
+            noise_std = 0.05 * max_amp_before  # Standard deviation of the noise
+            gaussian_noise = np.random.normal(noise_mean, noise_std, self.amp[:, i].shape)
+            self.amp[:, i] += gaussian_noise
 
 def random_contour(size, layers):
     layer_map = np.zeros((len(layers), size))
@@ -104,24 +115,48 @@ def random_contour(size, layers):
 
     return layer_map
 
+def nemp_contours(filename):
+    matfile = io.loadmat(filename)
+    label = matfile["label"]
+    map = np.zeros((label.shape[0], label.shape[1]))
+    nemp_map = np.zeros((label.shape[2]-1, label.shape[1]))
+    for i in range(label.shape[2]):
+        for x in range(label.shape[0]):
+            for y in range(label.shape[1]):
+                if label[x, y, i] == 1:
+                    map[x,y] = int(i)
+    
+    for j in range(map.shape[1]):
+        index = 0
+        for i in range(map.shape[0]):
+            if i+1 != map.shape[0]:
+                if map[i+1,j] != map[i,j]:
+                    nemp_map[index, j] = i
+                    index += 1
+
+    return nemp_map
+
 def generate_mask():
     return
 
 def run():
-    size = 2500
-    layers = [50, 150, 250]
-    layer_map = random_contour(size, layers)
-    rho = [1026, 1600, 1800, 2000]
-    c = [1500, 1450, 1700, 1900]
-    thresh = 0.00001
+    size = 256
+    # layers = [50, 100, 150]
+    # layer_map = random_contour(size, layers)
+    filename = "/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Train/nemp_data_9451"
+    layer_map = nemp_contours(filename)
+    rho = [1026, 1600, 1800, 2000, 2200, 2400]
+    c = [1500, 1450, 1700, 1900, 2000, 2200]
+    thresh = 0.01
     m_per_p = 1 # Meters/Pixel
     frequency = 16.67e3
     sbp_simulate = SBP_Simulate(size, layer_map, rho, c, m_per_p, thresh, frequency)
     sbp_simulate.simulate() 
     sbp_simulate.conv() 
-
+    
     plt.figure(1)
     plt.plot(sbp_simulate.twtt, np.abs(sbp_simulate.amp[:,0]), "-r")
+    plt.savefig("amp.png")
 
     plt.figure(2)
     plt.imshow(20*np.log(np.abs(sbp_simulate.amp)), extent=[0, sbp_simulate.floor.shape[1], sbp_simulate.twtt[-1], sbp_simulate.twtt[0]], cmap='gray', aspect ='auto')
@@ -129,7 +164,9 @@ def run():
     plt.title('Seafloor Simulation')
     plt.xlabel('Distance (m)')
     plt.ylabel('TWTT')
+    plt.clim(-50, 0)
     plt.yticks(np.arange(sbp_simulate.twtt[0], sbp_simulate.twtt[-1], 0.1))
+    plt.savefig("contour.png")
     plt.show()
 
 
