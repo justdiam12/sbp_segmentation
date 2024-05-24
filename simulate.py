@@ -3,7 +3,9 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 from scipy import io
-from scipy.ndimage import uniform_filter
+import scipy.io as sio
+from scipy.ndimage import uniform_filter1d
+
 
 class SBP_Simulate():
     def __init__(self, size, layers, rho, c, m_per_p, thresh, frequency):
@@ -18,7 +20,7 @@ class SBP_Simulate():
         self.floor = np.ones((self.size, self.size), dtype=np.float32)*0.00000001
         self.rho_profile = np.zeros((self.size, self.size))
         self.c_profile = np.zeros((self.size, self.size))
-        self.twtt = np.arange(0, 0.4, 1/self.frequency, dtype=np.float32)
+        self.twtt = np.arange(0, 0.3, 1/self.frequency, dtype=np.float32)
         self.amp = np.ones((len(self.twtt), size), dtype=np.float32)*0.0000001
         self.amp_indices = []
         for j in range(self.layers.shape[1]):
@@ -48,14 +50,14 @@ class SBP_Simulate():
         _range = 0
         for j in range(self.size):
             self.pulse(index, _range, j, up_down, time, coeff, rt)
-            sorted_data = sorted(self.amp_indices, key=lambda x: np.abs(x[1]), reverse=True)
-            for i in range(self.layers.shape[0]):
+            sorted_data = sorted(self.amp_indices, key=lambda x: x[1], reverse=True)
+            for i in range(self.layers.shape[0]+1):
                 data = sorted_data[i]
                 if i == 0:
                     data_2 = sorted_data[i+1]
                     self.mask[0:data[0], j] = i
                     self.mask[data[0]:data_2[0], j] = i+1
-                elif i == self.layers.shape[0]-1:
+                elif i == self.layers.shape[0]:
                     self.mask[data[0]:, j] = i+1
                 else:
                     data_2 = sorted_data[i+1]
@@ -92,9 +94,9 @@ class SBP_Simulate():
                     if index-1 == -1:
                         time += self.m_per_p / self.c_profile[index, dim]
                         _range += 1
-                        self.amp[np.where(np.isclose(self.twtt, time, atol=1/self.frequency))[0], dim] = coeff/_range
                         if len(np.where(np.isclose(self.twtt, time, atol=1/self.frequency))[0]) > 0:
                             dimes = np.where(np.isclose(self.twtt, time, atol=1/self.frequency))[0]
+                            self.amp[dimes[0], dim] = coeff/_range
                             self.amp_indices.append((int(np.round((dimes[0]/self.twtt.shape[0])*(self.size-1))), coeff/_range))
 
                         # print(20*np.log(rt))
@@ -109,20 +111,20 @@ class SBP_Simulate():
 
     def conv(self):
         for i in range(self.size):
-            exp_decay = np.exp(-np.arange(0, 0.05, 1 / self.frequency, dtype=np.float32) * 75)
             max_amp_before = np.max(np.abs(self.amp[:,i])) 
-            convolved_amp = uniform_filter(self.amp[:,i], size=10, mode='reflect')
-            convolved_amp = uniform_filter(np.convolve(self.amp[:,i], exp_decay, 'same'), size=10, mode='reflect')
+            noise_mean = 0  # Mean of the Gaussian noise
+            noise_std = 0.3 * max_amp_before  # Standard deviation of the noise
+            exp_decay = np.exp(-np.arange(0, 0.2, 1 / self.frequency, dtype=np.float32) * 75) 
+            noise_conv = exp_decay + np.random.normal(noise_mean, noise_std, exp_decay.shape)
+            convolved_amp = uniform_filter1d(np.convolve(self.amp[:,i], exp_decay, 'same'), size=10, )
             max_amp_after = np.max(np.abs(convolved_amp))
             if max_amp_after != 0:
                 self.amp[:,i] = convolved_amp * (max_amp_before / max_amp_after)
             else:
                 self.amp[:,i] = convolved_amp
             # Add Gaussian noise
-            noise_mean = 0  # Mean of the Gaussian noise
-            noise_std = 0.1 * max_amp_before  # Standard deviation of the noise
-            gaussian_noise = np.random.normal(noise_mean, noise_std, self.amp[:, i].shape)
-            self.amp[:, i] += gaussian_noise
+            # gaussian_noise = np.random.normal(noise_mean, 0.1, self.amp[:, i].shape)decay
+            # self.amp[:, i] += gaussian_noise
 
     def create_mask(self):
         for j in range(self.mask.shape[0]):
@@ -177,7 +179,7 @@ def run():
     # layer_map = random_contour(size, layers)
     rho = [1026, 1600, 1800, 2000, 2200, 2400]
     c = [1500, 1450, 1700, 1900, 2000, 2200]
-    thresh = 0.01
+    thresh = 0.1
     m_per_p = 1 # Meters/Pixel
     frequency = 16.67e3
     sbp_simulate = SBP_Simulate(size, layer_map, rho, c, m_per_p, thresh, frequency)
@@ -202,6 +204,10 @@ def run():
     plt.figure(3)
     plt.imshow(sbp_simulate.mask)
     plt.title("Simulate Mask")
+
+    plt.figure(4)
+    matfile = io.loadmat(filename)
+    plt.imshow(matfile["AMP"], cmap='gray')
     plt.show()
 
 
