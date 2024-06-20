@@ -126,15 +126,15 @@ class SBP_Simulate():
             # gaussian_noise = np.random.normal(noise_mean, 0.1, self.amp[:, i].shape)decay
             # self.amp[:, i] += gaussian_noise
 
-    def create_mask(self):
-        for j in range(self.mask.shape[0]):
-            index = 0
-            mask_layer = 0
-            for i in range(self.mask.shape[1]):
-                if self.mask[i,j] == 100:
-                    self.mask[index:i+1,j] = mask_layer
-                    mask_layer += 1
-                    index = i+1
+    # def create_mask(self):
+    #     for j in range(self.mask.shape[0]):
+    #         index = 0
+    #         mask_layer = 0
+    #         for i in range(self.mask.shape[1]):
+    #             if self.mask[i,j] == 100:
+    #                 self.mask[index:i+1,j] = mask_layer
+    #                 mask_layer += 1
+    #                 index = i+1
 
 
 def random_contour(size, layers):
@@ -145,7 +145,8 @@ def random_contour(size, layers):
             if j == 0:
                 layer_map[i,j] = layers[i]
             else:
-                layer_map[i,j] = random.randint(layers[i-1]-2, layers[i-1]+2)
+                layer_map[i,j] = layers[i]
+                # layer_map[i,j] = random.randint(layers[i-1]-2, layers[i-1]+2)
 
     return layer_map
 
@@ -172,13 +173,13 @@ def nemp_contours(filename):
 
 def run():
     size = 256
-    # layers = [50, 70, 100, 120, 200]
+    layers = [50, 75, 100]
+    layer_map = random_contour(size, layers)
+    # filename = "/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Train/nemp_data_9451"
+    # layer_map = nemp_contours(filename)
     # layer_map = random_contour(size, layers)
-    filename = "/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Train/nemp_data_9451"
-    layer_map = nemp_contours(filename)
-    # layer_map = random_contour(size, layers)
-    rho = [1026, 1600, 1800, 2000, 2200, 2400]
-    c = [1500, 1450, 1700, 1900, 2000, 2200]
+    rho = [1026, 1600, 1800, 2000]
+    c = [1500, 1450, 1700, 1900]
     thresh = 0.1
     m_per_p = 1 # Meters/Pixel
     frequency = 16.67e3
