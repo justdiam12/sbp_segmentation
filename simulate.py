@@ -177,7 +177,7 @@ def run():
     layer_map = random_contour(size, layers)
     # filename = "/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Train/nemp_data_9451"
     # layer_map = nemp_contours(filename)
-    # layer_map = random_contour(size, layers)
+    layer_map = random_contour(size, layers)
     rho = [1026, 1600, 1800, 2000]
     c = [1500, 1450, 1700, 1900]
     thresh = 0.1
@@ -186,7 +186,7 @@ def run():
     sbp_simulate = SBP_Simulate(size, layer_map, rho, c, m_per_p, thresh, frequency)
     sbp_simulate.simulate() 
     sbp_simulate.conv() 
-    sbp_simulate.create_mask()
+    # sbp_simulate.create_mask()
 
     plt.figure(1)
     plt.plot(sbp_simulate.twtt, np.abs(sbp_simulate.amp[:,0]), "-r")
