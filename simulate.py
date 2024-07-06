@@ -4,7 +4,8 @@ import random
 import matplotlib.pyplot as plt
 from scipy import io
 import scipy.io as sio
-from scipy.ndimage import uniform_filter1d
+from scipy.ndimage import uniform_filter1d, gaussian_filter1d
+from scipy.signal import find_peaks
 
 
 class SBP_Simulate():
@@ -58,7 +59,7 @@ class SBP_Simulate():
                     self.mask[0:data[0], j] = i
                     self.mask[data[0]:data_2[0], j] = i+1
                 elif i == self.layers.shape[0]:
-                    self.mask[data[0]:, j] = i+1
+                    self.mask[data[0]:, j] = i
                 else:
                     data_2 = sorted_data[i+1]
                     self.mask[data[0]:data_2[0], j] = i+1
@@ -112,29 +113,28 @@ class SBP_Simulate():
     def conv(self):
         for i in range(self.size):
             max_amp_before = np.max(np.abs(self.amp[:,i])) 
-            noise_mean = 0  # Mean of the Gaussian noise
-            noise_std = 0.3 * max_amp_before  # Standard deviation of the noise
-            exp_decay = np.exp(-np.arange(0, 0.2, 1 / self.frequency, dtype=np.float32) * 75) 
+            noise_mean = 0  
+            noise_std = 0.2 * max_amp_before 
+            exp_decay = np.exp(-np.arange(0, 0.149, 1 / self.frequency, dtype=np.float32) * 100) 
             noise_conv = exp_decay + np.random.normal(noise_mean, noise_std, exp_decay.shape)
-            convolved_amp = uniform_filter1d(np.convolve(self.amp[:,i], exp_decay, 'same'), size=10, )
+            zero_padding = np.zeros((1, len(noise_conv)))
+            noise_conv = np.append(zero_padding, noise_conv)
+            convolved_amp = uniform_filter1d(np.convolve(self.amp[:,i], noise_conv, 'same'), size=15)
             max_amp_after = np.max(np.abs(convolved_amp))
             if max_amp_after != 0:
-                self.amp[:,i] = convolved_amp * (max_amp_before / max_amp_after)
-            else:
-                self.amp[:,i] = convolved_amp
-            # Add Gaussian noise
-            # gaussian_noise = np.random.normal(noise_mean, 0.1, self.amp[:, i].shape)decay
-            # self.amp[:, i] += gaussian_noise
+                self.amp[:,i] = convolved_amp * (max_amp_before / max_amp_after) + np.random.normal(0, 0.1, self.amp[:,i].shape)
+            
+    def inversion(self):
+        smooth = uniform_filter1d(gaussian_filter1d(uniform_filter1d(gaussian_filter1d(self.amp[:,0], sigma=3), size=15), sigma=3), size=5)
+        peaks, _ = find_peaks(smooth, height=max(smooth)/3)
+        smooth_filtered = np.zeros_like(smooth)
+        for i in range(len(smooth)):
+            if i in peaks:
+                smooth_filtered[i] = smooth[i]
 
-    # def create_mask(self):
-    #     for j in range(self.mask.shape[0]):
-    #         index = 0
-    #         mask_layer = 0
-    #         for i in range(self.mask.shape[1]):
-    #             if self.mask[i,j] == 100:
-    #                 self.mask[index:i+1,j] = mask_layer
-    #                 mask_layer += 1
-    #                 index = i+1
+        print(peaks)
+
+        return smooth_filtered
 
 
 def random_contour(size, layers):
@@ -177,22 +177,25 @@ def run():
     layer_map = random_contour(size, layers)
     # filename = "/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Train/nemp_data_9451"
     # layer_map = nemp_contours(filename)
-    layer_map = random_contour(size, layers)
+    # layer_map = random_contour(size, layers)
     rho = [1026, 1600, 1800, 2000]
     c = [1500, 1450, 1700, 1900]
     thresh = 0.1
     m_per_p = 1 # Meters/Pixel
-    frequency = 16.67e3
+    frequency = 16.67e3 # Hz
     sbp_simulate = SBP_Simulate(size, layer_map, rho, c, m_per_p, thresh, frequency)
     sbp_simulate.simulate() 
     sbp_simulate.conv() 
-    # sbp_simulate.create_mask()
+    smooth = sbp_simulate.inversion()
 
     plt.figure(1)
     plt.plot(sbp_simulate.twtt, np.abs(sbp_simulate.amp[:,0]), "-r")
     plt.savefig("amp.png")
 
     plt.figure(2)
+    plt.plot(sbp_simulate.twtt, np.abs(smooth), "-r")
+
+    plt.figure(3)
     plt.imshow(20*np.log(np.abs(sbp_simulate.amp)), extent=[0, sbp_simulate.floor.shape[1], sbp_simulate.twtt[-1], sbp_simulate.twtt[0]], cmap='gray', aspect ='auto')
     plt.colorbar(label="Amplitude")  
     plt.title('Seafloor Simulation')
@@ -202,13 +205,10 @@ def run():
     plt.yticks(np.arange(sbp_simulate.twtt[0], sbp_simulate.twtt[-1], 0.1))
     plt.savefig("contour.png")
 
-    plt.figure(3)
-    plt.imshow(sbp_simulate.mask)
-    plt.title("Simulate Mask")
+    # plt.figure(3)
+    # plt.imshow(sbp_simulate.mask)
+    # plt.title("Simulate Mask")
 
-    plt.figure(4)
-    matfile = io.loadmat(filename)
-    plt.imshow(matfile["AMP"], cmap='gray')
     plt.show()
 
 
