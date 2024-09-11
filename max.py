@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt 
 import numpy as np
-from simulate import SBP_Simulate
-from simulate import nemp_contours
-from simulate import random_contour
+from Simulated_Data.simulate import SBP_Simulate
+from Simulated_Data.simulate import nemp_contours
+from Simulated_Data.simulate import random_contour
 
 def find_max(amp):
     max_amp = np.array([], dtype=np.float32)
