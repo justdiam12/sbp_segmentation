@@ -6,6 +6,7 @@ import scipy.io as sio
 from scipy.ndimage import uniform_filter1d, gaussian_filter1d
 from scipy.signal import find_peaks
 
+# Ricker Wavelet
 # Question about spherical spreading and attenuation. Add attenuation tomorrow when clarified.
 
 class SBP_Simulate_v2():
@@ -18,7 +19,7 @@ class SBP_Simulate_v2():
         self.time_interval = time_interval # Frequency of the Sonar System (Hz)
         self.pulse_width = 0.3 # Time between sonar pulses (s)
         # self.size = int(self.time * self.sample_f) # Length of the trackline 
-        self.size = 1
+        self.size = 1000
         self.layers = random_contour(layers, self.size) 
 
         # Seafloor parameter profiles
@@ -70,8 +71,8 @@ class SBP_Simulate_v2():
                 t_in_layer += time_difference
                 
                 # Compute R and T coefficients and recursive pulse call
-                R = ((self.impedance[layer+1, dim] - self.impedance[layer, dim]) / (self.impedance[layer+1, dim] + self.impedance[layer, dim])) * coeff
-                T = ((2*self.impedance[layer+1, dim]) / (self.impedance[layer+1, dim] + self.impedance[layer, dim])) * coeff
+                R = ((self.impedance[layer+1, dim] - self.impedance[layer, dim]) / (self.impedance[layer+1, dim] + self.impedance[layer, dim])) * np.exp(-self.attenuation[layer]*dist_in_layer) * coeff
+                T = ((2*self.impedance[layer+1, dim]) / (self.impedance[layer+1, dim] + self.impedance[layer, dim])) * np.exp(-self.attenuation[layer]*dist_in_layer) * coeff
                 self.pulse(layer-1, dim, 1, time_elapsed + time_difference, 0, dist_traveled + dist_difference, 0, R, np.append(rt,R))
                 if layer+1 < self.layers.shape[0]:
                     self.pulse(layer+1, dim, -1, time_elapsed + time_difference, 0, dist_traveled + dist_difference, 0, T, np.append(rt,T))
@@ -97,12 +98,8 @@ class SBP_Simulate_v2():
 
                 # Append the amplitude information
                 index = np.where(np.isclose(self.twtt, time_elapsed, atol = self.time_interval))[0]
-                self.amp[index, dim] = coeff
-                print("Time Elapsed: ", time_elapsed)
-                print("TWTT: ", self.twtt[index])
-                print("Coeff: ", coeff)
-                print("Distance Traveled: ", dist_traveled)
-                print(" ")
+                self.convolve(index, dim, coeff, layer, dist_in_layer, dist_traveled)
+                self.disp_info(time_elapsed, index, coeff, dist_traveled)
 
             else:
                 while dist_in_layer < self.layers[layer, dim] and time_elapsed < self.pulse_width:
@@ -118,14 +115,26 @@ class SBP_Simulate_v2():
                 t_in_layer += time_difference
 
                 # Compute R and T coefficients and recursive pulse call
-                R = ((self.impedance[layer, dim] - self.impedance[layer+1, dim]) / (self.impedance[layer, dim] + self.impedance[layer+1, dim])) * coeff
-                T = ((2*self.impedance[layer, dim]) / (self.impedance[layer, dim] + self.impedance[layer+1, dim])) * coeff
+                R = ((self.impedance[layer, dim] - self.impedance[layer+1, dim]) / (self.impedance[layer, dim] + self.impedance[layer+1, dim])) * np.exp(-self.attenuation[layer+1]*dist_in_layer) * coeff
+                T = ((2*self.impedance[layer, dim]) / (self.impedance[layer, dim] + self.impedance[layer+1, dim])) * np.exp(-self.attenuation[layer+1]*dist_in_layer) * coeff
                 self.pulse(layer+1, dim, -1, time_elapsed + time_difference, 0, dist_traveled + dist_difference, 0, R, np.append(rt,R))
                 if layer+1 < self.layers.shape[0]:
                     self.pulse(layer-1, dim, 1, time_elapsed + time_difference, 0, dist_traveled + dist_difference, 0, T, np.append(rt,T))
 
+    def convolve(self, index, dim, coeff, layer, dist_in_layer, dist_traveled):
+        
+
+        self.amp[index, dim] = coeff * np.exp(-self.attenuation[layer]*dist_in_layer) / dist_traveled
+
     def inversion(self):
         return
+
+    def disp_info(self, time_elapsed, index, coeff, dist_traveled):
+        print("Time Elapsed: ", time_elapsed)
+        print("TWTT: ", self.twtt[index])
+        print("Coeff: ", coeff)
+        print("Distance Traveled: ", dist_traveled)
+        print(" ")
 
 
 def random_contour(layers, size):
@@ -142,7 +151,7 @@ def run():
     layers = [50, 100, 150]
     rho = [1026, 1600, 1800, 2000]
     c = [1500, 1450, 1700, 1900]
-    attenuation = [0, 0, 0, 0]
+    attenuation = [0, 0, 0, 0] # Write a function that determines attenuation based off of system frequency and properties
     sample_f = 16.67e3
     time_interval = 0.0001
     sbp_simulate = SBP_Simulate_v2(time, layers, rho, c, attenuation, sample_f, time_interval)
@@ -151,7 +160,7 @@ def run():
 
     # Plots 
     plt.figure(1)
-    plt.plot(sbp_simulate.twtt, np.abs(sbp_simulate.amp[:,0]), '-r')
+    plt.imshow(np.abs(sbp_simulate.amp), cmap='gray')
     plt.savefig('amp.png')
     plt.show()
 
