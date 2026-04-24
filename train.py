@@ -24,10 +24,10 @@ IMAGE_HEIGHT = 256
 IMAGE_WIDTH = 256
 PIN_MEMORY = True
 LOAD_MODEL = False
-TRAIN_IMG_DIR = '/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Train'
-TRAIN_MASK_DIR = '/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Train'
-VAL_IMG_DIR = '/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Validation'
-VAL_MASK_DIR = '/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Validation'
+TRAIN_IMG_DIR = '/Users/justindiamond/Documents/Documents/UW-APL/Research/sbp_segmentation/SBP_Dataset_v3/Train'
+TRAIN_MASK_DIR = '/Users/justindiamond/Documents/Documents/UW-APL/Research/sbp_segmentation/SBP_Dataset_v3/Train'
+VAL_IMG_DIR = '/Users/justindiamond/Documents/Documents/UW-APL/Research/sbp_segmentation/SBP_Dataset_v3/Validation'
+VAL_MASK_DIR = '/Users/justindiamond/Documents/Documents/UW-APL/Research/sbp_segmentation/SBP_Dataset_v3/Validation'
 
 def train_fn(loader, model, optimizer, loss_fn, scaler):
     loop = tqdm(loader)
@@ -38,8 +38,8 @@ def train_fn(loader, model, optimizer, loss_fn, scaler):
 
         # forward
         with torch.cuda.amp.autocast():
-            # print(data.shape)
-            # print(targets.shape)
+            print(data.shape)
+            print(targets.shape)
             predictions = model(data)
             # print(predictions.shape)
             loss = loss_fn(predictions, targets)

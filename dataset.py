@@ -27,10 +27,9 @@ class SBPDataset(Dataset):
         mask_path = os.path.join(self.mask_dir, self.images[index])
         mat = io.loadmat(image_path)
         image = np.array(mat['AMP'], dtype=np.float32)
-        image = np.transpose(image, (2, 0, 1))
+        image = np.expand_dims(image, axis=0)
         # Switch dimension 3 with dim 1 for 
         mask = np.array(mat['label'], dtype=np.float32)
-        # print(mask.shape)
         mask = np.transpose(mask, (2, 0, 1))
 
         # mask1 = np.all(mask == np.array(color1), axis=-1) # Blue
@@ -41,7 +40,7 @@ class SBPDataset(Dataset):
         # mask6 = np.all(mask == np.array(color6), axis=-1)
 
         # mask = np.stack([mask1, mask2, mask3, mask4, mask5, mask6], axis=0).astype(np.uint8)
-
+        # print("Stop")
         # if self.transform is not None:
         #     augmentations = self.transform(image=image, mask=mask)
         #     image = augmentations["image"]

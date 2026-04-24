@@ -36,16 +36,16 @@ def convert_to_RGB(input_tensor, output_directory):
     rgb_image_pil.save(output_directory)
 
 
-model_path = '/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/UNet_Epoch50.pth.tar'
+model_path = '/Users/justindiamond/Documents/Documents/UW-APL/Research/sbp_segmentation/UNet_Epoch50.pth.tar'
 epochs = 50
 model = UNet(in_channels=1, out_channels=6)
 load_checkpoint(torch.load(model_path), model)
 model.eval()
 
 with torch.no_grad():
-    train_dir = "/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Train/"
-    val_dir = "/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Validation/"
-    test_dir = "/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Test/"
+    train_dir = "/Users/justindiamond/Documents/Documents/UW-APL/Research/sbp_segmentation/SBP_Dataset_v3/Train/"
+    val_dir = "/Users/justindiamond/Documents/Documents/UW-APL/Research/sbp_segmentation/SBP_Dataset_v3/Validation/"
+    test_dir = "/Users/justindiamond/Documents/Documents/UW-APL/Research/sbp_segmentation/SBP_Dataset_v3/Test/"
     train_images = [file for file in os.listdir(train_dir) if file.endswith('.mat')]
     val_images = [file for file in os.listdir(val_dir) if file.endswith('.mat')]
     test_images = [file for file in os.listdir(test_dir) if file.endswith('.mat')]
@@ -95,5 +95,5 @@ with torch.no_grad():
         output = preds.squeeze(0)
         output_name = test_images[i]
         output_name = output_name[:-4] + ".png"
-        output_directory =  "/Users/justindiamond/Documents/Documents/UW-APL/sbp_segmentation/SBP_Dataset_v3/Test_Output_" + str(epochs) + "_Epochs/" +  output_name
+        output_directory =  "/Users/justindiamond/Documents/Documents/UW-APL/Research/sbp_segmentation/SBP_Dataset_v3/Test_Output_" + str(epochs) + "_Epochs/" +  output_name
         convert_to_RGB(output, output_directory)
